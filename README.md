@@ -5,3 +5,4 @@ Really cool calendar that tracks the MMIS senior high school schedule for G11 ST
 
 Has easy customization and is extremely simple to use. I should get extra credit for this.
 
+More features might be added soon!
