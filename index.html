@@ -1,0 +1,809 @@
+<!-- Looking for something? -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<!-- Change the following to customize the browser tab -->
+<title>MMIS Calendar</title>
+<link rel="icon" href="mmisicon.png" type="image/png">
+
+<!-- Font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+<!------------------------------------------
+|                                           |
+|                  STYLES!!                 |
+|                                           |
+------------------------------------------->
+<style>
+:root {
+  --glass-bg: rgba(255,255,255,0.12);
+  --glass-border: rgba(255,255,255,0.25);
+  --text-main: #fff;
+  --text-muted: rgba(255,255,255,0.7);
+  --accent: #7f8cff;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+  color: var(--text-main);
+}
+
+
+/* ===================
+    BACKGROUND VIDEO 
+   ===================*/
+#bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+
+/* ==================
+      BLUR OVERLAY 
+  ===================*/
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(2px);
+  z-index: -1;
+}
+
+
+/* ===================
+        CLOCK 
+   ===================*/
+.clock {
+  position: fixed;
+  top: 32px;
+  left: 32px;
+  z-index: 3;
+}
+
+.clock .time {
+  font-size: 3rem;
+  font-weight: 300;
+}
+
+.clock .date {
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+
+/* ===================
+        SCHEDULE 
+   ===================*/
+.schedule-wrapper {
+  position: relative;
+  z-index: 1;
+
+  max-width: 1100px;
+  width: 100%;
+
+  height: calc(100% - 160px);
+  margin: 140px auto 20px;
+  padding: 20px;
+
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  backdrop-filter: blur(18px);
+
+  overflow-y: auto;
+  scrollbar-width: none;       /* Firefox compatability */
+  -ms-overflow-style: none;    /* IE/Edge compatability */
+}
+
+.schedule-wrapper::-webkit-scrollbar {
+  display: none;               /* Chrome / Safari compatability */
+}
+
+
+
+/* ===================
+     CALENDAR GRID 
+   ===================*/
+.calendar-container {
+  position: relative;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: 80px repeat(var(--day-count), 1fr);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+
+/* ===================
+         HEADER 
+   ===================*/
+.day-header {
+  position: sticky;
+  top: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  z-index: 5;
+  text-align: center;
+}
+
+
+/* ===================
+      TIME LABEL 
+   ===================*/
+.time-label {
+  height: 60px;              /* Must match HOUR_HEIGHT */
+                                        /* ^^^^^^^^^^ Does this variable even exist anymore? */
+  display: flex;
+  align-items: center;       /* Center vertically */
+  justify-content: center;   /* Center horizontally */
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  border-right: 1px solid rgba(255,255,255,0.15);
+}
+
+
+/* ===================
+        CELLS 
+   ===================*/
+.cell {
+  position: relative;
+  height: 60px;
+  border-bottom: 1px dashed rgba(255,255,255,0.08);
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+/*  .cell::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  border-bottom: 1px dotted rgba(255,255,255,0.12);
+  pointer-events: none;
+} */
+
+
+/* ===================
+     EVENTS (STYLE)
+   ===================*/
+.event {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  padding: 4px 8px;
+  line-height: 1.2;
+  font-size: 0.85rem;
+  opacity: 0.95
+}
+
+.events-layer {
+  position: absolute;
+  top: 0;
+  left: 80px;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+
+/* ===================
+  CURRENT TIME OVERLAY 
+   ===================*/
+.calendar-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3
+}
+
+.current-time {
+  position: absolute;
+  left: 80px;
+  right: 0;
+  height: 2px;
+  background: #ff4d4d;
+  z-index: 3
+}
+
+.current-time::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  background: #ff4d4d;
+  border-radius: 50%;
+}
+
+/* ===================
+    SCHEDULE DROPDOWN 
+   ===================*/
+.schedule-select {
+  position: absolute;
+  top: 110px;    /* hardcoded position i couldnt get it right */
+  left: 0;
+}
+
+.schedule-select select {
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  backdrop-filter: blur(8px);
+  outline: none;
+  cursor: pointer;
+}
+
+
+/* ===================
+      CREDITS STUFF 
+   ===================*/
+#creditsBtn {
+  margin-top: 8px;
+  width: 40%;
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+#creditsBtn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.credits-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.credits-box {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  backdrop-filter: blur(18px);
+  border-radius: 16px;
+  padding: 20px 24px;
+  width: 300px;
+  text-align: center;
+}
+
+.credits-box h3 {
+  margin-top: 0;
+  font-weight: 600;
+}
+
+.credits-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.credits-box li {
+  margin-bottom: 8px;
+}
+
+.credits-box button {
+  margin-top: 12px;
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+
+</style>
+</head>
+
+<!------------------------------------------
+| 10101010101001010101010101010101010101010|
+| 010101010101010101 HTML 10101010101010101|
+|010101010101010101010101010101010101010101|
+------------------------------------------->
+<body>
+<!-- Play the video in the background when loaded -->
+<video autoplay muted loop playsinline id="bg-video">
+  <source src="background.mp4" type="video/mp4">
+</video>
+
+<!-- Clock format -->
+<div class="clock">
+  <div class="time" id="time">00:00</div>
+  <div class="date" id="date">—</div>
+
+<!-- Schedule dropdown -->
+<div class="schedule-select">
+  <select id="schedulePicker">
+    <option value="A">Schedule A</option>
+    <option value="B">Schedule B</option>
+    <option value="C">Schedule C</option>
+    <option value="D">Schedule D</option>
+    <option value="E">Schedule E</option>
+    <option value="F">Schedule F</option>
+  </select>
+
+    <!-- Credits button -->
+    <button id="creditsBtn">Credits</button>
+  </div>
+</div>
+
+
+<div class="schedule-wrapper">
+  <!-- Calendar -->
+  <div class="calendar-container">
+    <div class="calendar" id="calendar"></div>
+    <div class="calendar-overlay" id="calendarOverlay"></div>
+  </div>
+</div>
+
+<!------------------------------------------
+|                                           |
+|             CREDITS TEXT!!                |
+|                                           |
+------------------------------------------->
+<div id="creditsModal" class="credits-modal hidden">
+  <div class="credits-box">
+    <h3>Credits!!!</h3>
+
+    <ul>
+      <li><strong>Code:</strong> brjw (JOHANN)</li>
+      <li><strong>Code Help:</strong> People on Stack Overflow</li>
+      <li><strong>Design Help:</strong> Zane, Yeosef, Miguel :)</li>
+      <li><strong>Background Video:</strong> Blue Archive</li>
+    </ul>
+
+    <button id="closeCredits">Close</button>
+  </div>
+</div>
+
+
+<!------------------------------------------
+|===========================================|
+|                 JAVASCRIPT                |
+|===========================================|
+------------------------------------------->
+<script>
+/* ===================
+        FUNCTIONS 
+   ===================*/
+function toMinutes(time) {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function toTimeString(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+}
+
+function generateScheduleEvents(scheduleKey) {
+  const rule = scheduleRules[scheduleKey];
+
+  const periodTimes = [];
+  let time = rule.start;
+
+  for (let p = 0; p < PERIOD_COUNT; p++) {
+    const duration = rule.period;
+
+
+
+    periodTimes.push({
+      start: time,
+      end: time + duration
+    });
+
+    time += duration;
+  }
+
+  return {
+    startHour: Math.floor(rule.start / 60),
+    endHour: Math.ceil(time / 60),
+    periodTimes
+  };
+}
+
+function collapsePeriods(periods) {
+  const result = [];
+  let i = 0;
+
+  while (i < periods.length) {
+    const name = periods[i] ?? "Free Time";
+    let span = 1;
+
+    while (
+      i + span < periods.length &&
+      (periods[i + span] ?? "Free Time") === name
+    ) {
+      span++;
+    }
+
+    result.push({
+      name,
+      startPeriod: i,
+      span
+    });
+
+    i += span;
+  }
+
+  return result;
+}
+
+
+/* ===================
+        CLOCK 
+   ===================*/
+const time = document.getElementById("time");
+const date = document.getElementById("date");
+
+function updateTime() {
+  const now = new Date();
+  time.textContent = now.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+  date.textContent = now.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric"
+  });
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+
+/* ===================
+    CALENDAR CONFIG 
+   ===================*/
+const days = ["Scheme A", "Scheme B", "Scheme C", "Scheme D", "Scheme E"];
+const PERIOD_COUNT = 9;
+
+
+const scheduleRules = {
+  A: { start: 7 * 60 + 40, period: 55, lunch: 60, lunchName: "Lunch" },
+  B: { start: 8 * 60 + 30, period: 50, lunch: 60, lunchName: "Lunch" },
+  C: { start: 7 * 60 + 30, period: 50, lunch: 60, lunchName: "Lunch" },
+  D: { start: 9 * 60 + 30, period: 45, lunch: 60, lunchName: "Lunch" },
+  E: { start: 7 * 60 + 30, period: 60, lunch: 60, lunchName: "Lunch" },
+  F: { start: 7 * 60 + 30, period: 30, lunch: 15, lunchName: "Recess" }
+};
+
+const subjectColors = {
+  "Oral Communication": "#FF5C5C",
+  "UCSP": "#FF6666",
+  "Gen Bio I": "#FF7373",
+  "Practical Research I": "#FF8787",
+  "Filipino": "#FF9C9C",
+
+  "Programming": "#FFB8B8",
+  "Basic Calculus": "#FFCCCC",
+  "Statistics & Probability": "#FF9B63",
+  "Theatre I": "#FFB080",
+  "DRRR": "#FFC199",
+  "Sports": "#FF8938",
+
+  "Free Time": "rgba(255,255,255,0.25)",
+  "Lunch": "#FFC038",
+  "Recess": "#fb8500"
+};
+
+const classMap = {
+  0: [
+    "Oral Communication",
+    "Free Time",
+    "UCSP",
+    "Gen Bio I",
+    "Lunch",
+    "Gen Bio I",
+    "Practical Research I",
+    "Practical Research I",
+    "Filipino"
+  ],
+  1: [
+    "Programming",
+    "Free Time",
+    "Free Time",
+    "Basic Calculus",
+    "Lunch",
+    "Theatre I",
+    "Free Time",
+    "DRRR",
+    "Sports"
+  ],
+  2: [
+    "Free Time",
+    "Programming",
+    "Free Time",
+    "Basic Calculus",
+    "UCSP",
+    "Lunch",
+    "Statistics & Probability",
+    "Statistics & Probability",
+    "Theatre I"
+  ],
+  3: [
+    "Oral Communication",
+    "Filipino",
+    "Gen Bio I",
+    "Lunch",
+    "Gen Bio I",
+    "Filipino",
+    "DRRR",
+    "DRRR",
+    "UCSP"
+  ],
+  4: [
+    "Oral Communication",
+    "Statistics & Probability",
+    "Free Time",
+    "Basic Calculus",
+    "Recess",
+    "Basic Calculus",
+    "Practical Research I",
+    "Practical Research I",
+    "Theatre I"
+  ]
+};
+
+const schedules = {
+  A: { start: 7, end: 16 },
+  B: { start: 8, end: 17 },
+  C: { start: 7, end: 15 },
+  D: { start: 9, end: 18 },
+  E: { start: 7, end: 14 },
+  F: { start: 8, end: 16 }
+};
+
+let currentSchedule = "A";
+let startHour, endHour;
+
+const HOUR_HEIGHT = 60; // FOUND IT
+
+document.documentElement.style.setProperty("--day-count", days.length);
+
+const calendar = document.getElementById("calendar");
+const overlay = document.getElementById("calendarOverlay");
+
+let timeLine;
+
+
+/* ===================
+         EVENTS 
+   ===================*/
+const events = [
+  { day: 0, start: 460, end: 515, title: "Oral Communication" },
+  { day: 0, start: 515, end: 570, title: "Free Time!" },
+  { day: 0, start: 570, end: 625, title: "Understanding Culture, Society, Politics" },
+  { day: 0, start: 625, end: 680, title: "Gen Bio 1" },
+  { day: 0, start: 680, end: 740, title: "Lunch!!" },
+  { day: 0, start: 740, end: 795, title: "Gen Bio 1" },
+  { day: 0, start: 795, end: 905, title: "Practical Research" },
+  { day: 0, start: 905, end: 970, title: "Filipino" },
+  // Scheme B
+  // Schedule B
+  { day: 1, start: 510, end: 560, title: "Programming" },
+  { day: 1, start: 560, end: 660, title: "Free Time!" },
+  { day: 1, start: 660, end: 710, title: "Basic Calculus" },
+  { day: 1, start: 710, end: 770, title: "Lunch!!" },
+  { day: 1, start: 770, end: 820, title: "Theatre 1" },
+  { day: 1, start: 820, end: 870, title: "Free Time!" },
+  { day: 1, start: 870, end: 920, title: "Disaster Readiness and Risk Reduction" },
+  { day: 1, start: 920, end: 970, title: "Sports" },
+  // Scheme C
+  // Schedule C
+  { day: 2, start: 450, end: 500, title: "Free Time!" },
+  { day: 2, start: 500, end: 550, title: "Programming" },
+  { day: 2, start: 550, end: 600, title: "Free Time!" },
+  { day: 2, start: 600, end: 650, title: "Basic Calculus" },
+  { day: 2, start: 650, end: 700, title: "Understanding Culture, Society, Politics" },
+  { day: 2, start: 700, end: 760, title: "Lunch!!" },
+  { day: 2, start: 760, end: 860, title: "Statistics & Probability" },
+  { day: 2, start: 860, end: 920, title: "Theatre 1" },
+  // Scheme D
+  // Schedule D
+  { day: 3, start: 570, end: 615, title: "Oral Communication" },
+  { day: 3, start: 615, end: 660, title: "Filipino" },
+  { day: 3, start: 660, end: 705, title: "Gen Bio 1" },
+  { day: 3, start: 705, end: 765, title: "Lunch!!" },
+  { day: 3, start: 765, end: 810, title: "Gen Bio 1" },
+  { day: 3, start: 810, end: 855, title: "Filipino" },
+  { day: 3, start: 855, end: 945, title: "Disaster Readiness and Risk Reduction" },
+  { day: 3, start: 945, end: 990, title: "Understanding Culture, Society, Politics" },
+  // Scheme E
+  // Schedule F
+  { day: 4, start: 450, end: 480, title: "Oral Communication" },
+  { day: 4, start: 480, end: 510, title: "Statistics & Probability" },
+  { day: 4, start: 510, end: 540, title: "Free Time!" },
+  { day: 4, start: 540, end: 570, title: "Basic Calculus" },
+  { day: 4, start: 570, end: 585, title: "Recess" },
+  { day: 4, start: 585, end: 615, title: "Basic Calculus" },
+  { day: 4, start: 615, end: 675, title: "Practical Research 1" },
+  { day: 4, start: 675, end: 705, title: "Theatre 1" },
+];
+
+
+/* ===================
+     BUILD CALENDAR 
+   ===================*/
+function buildCalendar() {
+  calendar.innerHTML = "";
+  overlay.innerHTML = "";
+  timeLine = null;
+
+const schedule = generateScheduleEvents(currentSchedule);
+
+startHour = schedule.startHour;
+endHour   = schedule.endHour;
+
+
+  // HEADER
+  calendar.appendChild(document.createElement("div"));
+  days.forEach(day => {
+    const h = document.createElement("div");
+    h.className = "day-header";
+    h.textContent = day;
+    calendar.appendChild(h);
+  });
+
+  const headerHeight =
+    document.querySelector(".day-header").offsetHeight;
+
+  // GRID
+  for (let h = startHour; h <= endHour; h++) {
+    const label = document.createElement("div");
+    label.className = "time-label";
+    label.textContent = `${h % 12 || 12} ${h >= 12 ? "PM" : "AM"}`;
+    calendar.appendChild(label);
+
+    for (let d = 0; d < days.length; d++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.day = d;
+      calendar.appendChild(cell);
+    }
+  }
+
+  const firstCell = document.querySelector('.cell[data-day="0"]');
+  if (!firstCell) return;
+
+  const colLeft = firstCell.offsetLeft;
+  const colWidth = firstCell.offsetWidth;
+
+ // EVENTS
+days.forEach((_, dayIndex) => {
+  const periods = classMap[dayIndex];
+  const collapsed = collapsePeriods(periods);
+
+collapsed.forEach(block => {
+  const start = schedule.periodTimes[block.startPeriod].start;
+  const end =
+    schedule.periodTimes[block.startPeriod + block.span - 1].end;
+
+  const ev = document.createElement("div");
+  ev.className = "event";
+  ev.textContent =
+  currentSchedule === "F" && block.name === "Lunch"
+    ? "Recess"
+    : block.name;
+
+
+  const color = subjectColors[block.name];
+  if (color) ev.style.background = color;
+
+  if (block.name === "Free Time") ev.style.opacity = "0.35";
+
+  const top =
+    headerHeight +
+    ((start - startHour * 60) / 60) * HOUR_HEIGHT;
+
+  const height =
+    ((end - start) / 60) * HOUR_HEIGHT - 8;
+
+  ev.style.top = `${top}px`;
+  ev.style.left = `${colLeft + dayIndex * colWidth + 6}px`;
+  ev.style.width = `${colWidth - 12}px`;
+  ev.style.height = `${height}px`;
+
+  overlay.appendChild(ev);
+});
+});
+}
+
+/* ===================
+      TIME LINE 
+   ===================*/
+function updateCurrentTimeLine(headerHeight = 0) {
+  const now = new Date();
+  const minutesNow = now.getHours() * 60 + now.getMinutes();
+
+  if (minutesNow < startHour * 60 || minutesNow > endHour * 60) return;
+
+  const offset =
+    headerHeight +
+    ((minutesNow - startHour * 60) / 60) * HOUR_HEIGHT;
+
+  if (!timeLine) {
+    timeLine = document.createElement("div");
+    timeLine.className = "current-time";
+    overlay.appendChild(timeLine);
+  }
+
+  timeLine.style.top = `${offset}px`;
+}
+
+
+/* ===================
+     EVENT LISTENERS
+   ===================*/
+document
+  .getElementById("schedulePicker")
+  .addEventListener("change", e => {
+    currentSchedule = e.target.value;
+    buildCalendar();
+  });
+
+buildCalendar();
+setInterval(updateCurrentTimeLine, 60000);
+
+
+
+const creditsBtn = document.getElementById("creditsBtn");
+const creditsModal = document.getElementById("creditsModal");
+const closeCredits = document.getElementById("closeCredits");
+
+creditsBtn.addEventListener("click", () => {
+  creditsModal.classList.remove("hidden");
+});
+
+closeCredits.addEventListener("click", () => {
+  creditsModal.classList.add("hidden");
+});
+
+// Optional: click outside to close
+creditsModal.addEventListener("click", e => {
+  if (e.target === creditsModal) {
+    creditsModal.classList.add("hidden");
+  }
+});
+
+</script>
+
+</body>
+</html>
