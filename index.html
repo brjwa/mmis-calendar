@@ -146,12 +146,13 @@ body::before {
 /* ===================
       TIME LABEL 
    ===================*/
+
 .time-label {
   height: 60px;              /* Must match HOUR_HEIGHT */
                                         /* ^^^^^^^^^^ Does this variable even exist anymore? */
   display: flex;
-  align-items: center;       /* Center vertically */
-  justify-content: center;   /* Center horizontally */
+  align-items: center;     
+  justify-content: center; 
   font-size: 0.85rem;
   color: var(--text-muted);
   border-right: 1px solid rgba(255,255,255,0.15);
@@ -206,7 +207,7 @@ body::before {
 
 
 /* ===================
-  CURRENT TIME OVERLAY 
+    CALENDAR OVERLAY 
    ===================*/
 .calendar-overlay {
   position: absolute;
@@ -214,6 +215,15 @@ body::before {
   pointer-events: none;
   z-index: 3
 }
+
+/* ===================
+        TIMELINE   
+   ===================*/
+
+/* BUG 
+Line does not appear until next position update when file is opened.
+Line is VERRRRRY late. 
+*/
 
 .current-time {
   position: absolute;
@@ -328,6 +338,37 @@ body::before {
   display: none;
 }
 
+/*===========debug */
+#debugToggleBtn {
+  margin-top: 6px;
+  width: 20%;
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+#debugToggleBtn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+#debugPanel {
+  margin-top: 6px;
+  padding: 8px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+#debugPanel input {
+  width: 100%;
+}
+
+
 </style>
 </head>
 
@@ -358,8 +399,43 @@ body::before {
     <option value="F">Schedule F</option>
   </select>
 
+        <!-- Debug toggle -->
+<button id="debugToggleBtn"><></button>
+
     <!-- Credits button -->
     <button id="creditsBtn">Credits</button>
+
+
+<!-- Debug controls -->
+<div id="debugPanel" class="hidden">
+  <div style="margin-bottom:4px;">
+    Debug Time: <span id="debugLabel"></span>
+  </div>
+  <input
+    type="range"
+    id="debugSlider"
+    min="0"
+    max="1439"
+    value="480"
+  />
+  <button
+  id="debugReset"
+  style="
+    margin-top: 6px;
+    width: 100%;
+    background: rgba(0,0,0,0.35);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    padding: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+  "
+>
+  Reset to Current Time
+</button>
+</div>
+
   </div>
 </div>
 
@@ -382,9 +458,9 @@ body::before {
     <h3>Credits!!!</h3>
 
     <ul>
-      <li><strong>Code:</strong> brjw (JOHANN)</li>
+      <li><strong>Code:</strong> brjw</li>
       <li><strong>Code Help:</strong> People on Stack Overflow</li>
-      <li><strong>Design Help:</strong> Zane, Yeosef, Miguel :)</li>
+      <li><strong>Design Help:</strong> My friends :)</li>
       <li><strong>Background Video:</strong> Blue Archive</li>
     </ul>
 
@@ -399,6 +475,24 @@ body::before {
 |===========================================|
 ------------------------------------------->
 <script>
+/* ===================
+          DEBUG
+   ===================*/
+let DEBUG_MODE = false;
+let debugMinutes = 8 * 60;
+
+
+function getCurrentMinutes() {
+  if (DEBUG_MODE) {
+    return debugMinutes;
+  }
+
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+
+
 /* ===================
         FUNCTIONS 
    ===================*/
@@ -494,6 +588,7 @@ updateTime();
    ===================*/
 const days = ["Scheme A", "Scheme B", "Scheme C", "Scheme D", "Scheme E"];
 const PERIOD_COUNT = 9;
+const debugReset = document.getElementById("debugReset");
 
 
 const scheduleRules = {
@@ -663,6 +758,7 @@ const events = [
      BUILD CALENDAR 
    ===================*/
 function buildCalendar() {
+  updateCurrentTimeLine();
   calendar.innerHTML = "";
   overlay.innerHTML = "";
   timeLine = null;
@@ -749,9 +845,12 @@ collapsed.forEach(block => {
 /* ===================
       TIME LINE 
    ===================*/
-function updateCurrentTimeLine(headerHeight = 0) {
-  const now = new Date();
-  const minutesNow = now.getHours() * 60 + now.getMinutes();
+function updateCurrentTimeLine() {
+  const headerHeight =
+    document.querySelector(".day-header")?.offsetHeight || 0;
+
+  const minutesNow = getCurrentMinutes();
+
 
   if (minutesNow < startHour * 60 || minutesNow > endHour * 60) return;
 
@@ -777,13 +876,32 @@ document
   .addEventListener("change", e => {
     currentSchedule = e.target.value;
     buildCalendar();
+
+    updateCurrentTimeLine();
   });
 
-buildCalendar();
-setInterval(updateCurrentTimeLine, 60000);
+debugReset.addEventListener("click", () => {
+  const now = new Date();
+  debugMinutes = now.getHours() * 60 + now.getMinutes();
+
+  debugSlider.value = debugMinutes;
+
+  if (typeof debugTimeInput !== "undefined") {
+    const h = now.getHours().toString().padStart(2, "0");
+    const m = now.getMinutes().toString().padStart(2, "0");
+    debugTimeInput.value = `${h}:${m}`;
+  }
+
+  updateDebugLabel();
+  updateCurrentTimeLine();
+});
 
 
 
+
+/* ===================
+      CREDIT EVENTS
+   ===================*/
 const creditsBtn = document.getElementById("creditsBtn");
 const creditsModal = document.getElementById("creditsModal");
 const closeCredits = document.getElementById("closeCredits");
@@ -796,12 +914,44 @@ closeCredits.addEventListener("click", () => {
   creditsModal.classList.add("hidden");
 });
 
-// Optional: click outside to close
 creditsModal.addEventListener("click", e => {
   if (e.target === creditsModal) {
     creditsModal.classList.add("hidden");
   }
 });
+
+
+// RENDER
+buildCalendar();
+updateCurrentTimeLine();
+
+setInterval(updateCurrentTimeLine, 60000);
+
+const debugToggleBtn = document.getElementById("debugToggleBtn");
+const debugPanel = document.getElementById("debugPanel");
+const debugSlider = document.getElementById("debugSlider");
+const debugLabel = document.getElementById("debugLabel");
+
+function updateDebugLabel() {
+  debugLabel.textContent = toTimeString(debugMinutes);
+}
+
+debugToggleBtn.addEventListener("click", () => {
+  DEBUG_MODE = !DEBUG_MODE;
+  debugPanel.classList.toggle("hidden", !DEBUG_MODE);
+
+  // Snap line immediately when toggling
+  updateCurrentTimeLine();
+});
+
+debugSlider.addEventListener("input", e => {
+  debugMinutes = Number(e.target.value);
+  updateDebugLabel();
+  updateCurrentTimeLine();
+});
+
+updateDebugLabel();
+
 
 </script>
 
